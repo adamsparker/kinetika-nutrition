@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kinetika Pro — Technical Catalog</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-top">
+            <div class="logo">Kinetika<span>Pro</span></div>
+            <div class="header-actions">
+                <button class="btn-icon" onclick="togglePanel('favorites-panel')" title="Избранное">
+                    <i class="ph ph-heart"></i>
+                    <span class="badge" id="fav-badge">0</span>
+                </button>
+                <button class="btn-icon" onclick="togglePanel('orders-panel')" title="Заказы">
+                    <i class="ph ph-clipboard-text"></i>
+                </button>
+                <button class="btn-icon" onclick="togglePanel('stats-panel')" title="Статистика">
+                    <i class="ph ph-chart-bar"></i>
+                </button>
+                <button class="btn-icon" onclick="togglePanel('settings-panel')" title="Настройки">
+                    <i class="ph ph-gear"></i>
+                </button>
+                <button class="btn-icon" onclick="togglePanel('cart-panel')" title="Корзина">
+                    <i class="ph ph-shopping-cart"></i>
+                    <span class="badge" id="cart-badge">0</span>
+                </button>
+            </div>
+        </div>
+        <div class="search-bar">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="search-input" placeholder="Поиск по названию или коду..." oninput="handleSearch()">
+        </div>
+        <div class="categories-scroll" id="categories-bar" style="margin-top: 12px;"></div>
+        <!-- Advanced filters -->
+        <div class="filters-bar" id="filters-bar">
+            <div class="filter-group">
+                <select id="sort-select" onchange="handleSort()">
+                    <option value="default">Сортировка</option>
+                    <option value="name-asc">Название А→Я</option>
+                    <option value="name-desc">Название Я→А</option>
+                    <option value="price-asc">Цена ↑</option>
+                    <option value="price-desc">Цена ↓</option>
+                </select>
+                <select id="brand-select" onchange="handleBrandFilter()">
+                    <option value="all">Все бренды</option>
+                </select>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- CATALOG -->
+    <main class="catalog" id="catalog-container"></main>
+
+    <!-- OVERLAY -->
+    <div class="panel-overlay" id="overlay" onclick="closeAllPanels()"></div>
+
+    <!-- LIGHTBOX: single product -->
+    <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+        <div class="lb-content" onclick="event.stopPropagation()">
+            <button class="lb-close" onclick="closeLightbox()">&times;</button>
+            <img id="lightbox-img" src="" alt="Просмотр товара">
+            <div class="lb-code" id="lightbox-code"></div>
+        </div>
+    </div>
+
+    <!-- LIGHTBOX: stack gallery -->
+    <div class="lightbox-overlay" id="stack-lightbox" onclick="closeStackLightbox()">
+        <div class="lb-gallery" onclick="event.stopPropagation()">
+            <button class="lb-close" onclick="closeStackLightbox()">&times;</button>
+            <div id="lb-gallery-images"></div>
+            <div class="lb-gallery-title" id="lb-gallery-title"></div>
+        </div>
+    </div>
+
+    <!-- PANEL: CART -->
+    <div class="panel" id="cart-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-shopping-cart" style="color:var(--accent);"></i> Корзина</div>
+            <div style="display:flex; gap:4px;">
+                <button class="btn-icon" onclick="clearCart()" title="Очистить корзину" style="color:var(--red);"><i class="ph ph-trash"></i></button>
+                <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+            </div>
+        </div>
+        <div class="panel-content" id="cart-content"></div>
+        <div class="cart-footer" id="cart-footer">
+            <div class="total-row">
+                <span class="total-label">Итого опт:</span>
+                <span class="total-val" id="cart-total-opt">0 ₽</span>
+            </div>
+            <div class="total-row">
+                <span class="total-label">Прибыль:</span>
+                <span class="total-val profit-val" id="cart-total-profit">+ 0 ₽</span>
+            </div>
+            <div class="total-row" style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 8px;">
+                <span class="total-label" style="color: var(--text);">К оплате:</span>
+                <span class="total-val" id="cart-total-retail" style="color: var(--accent);">0 ₽</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn-secondary" style="flex:1;" onclick="copyOrder()">
+                    <i class="ph ph-copy"></i> Копировать
+                </button>
+                <button class="btn-primary" style="flex:1;" onclick="openOrderForm()">
+                    <i class="ph ph-check-circle"></i> Оформить заказ
+                </button>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button class="btn-secondary" style="flex:1;" onclick="togglePanel('export-panel')">
+                    <i class="ph ph-export"></i> Экспорт
+                </button>
+                <button class="btn-secondary" style="flex:1;" onclick="openNakladnaya()">
+                    <i class="ph ph-receipt"></i> Накладная
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL: ORDER FORM -->
+    <div class="panel" id="order-form-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-file-text" style="color:var(--accent);"></i> Оформление заказа</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content" id="order-form-content">
+            <div id="order-form-items-summary" style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: var(--r-sm);"></div>
+            <form id="order-form" onsubmit="saveOrder(event)">
+                <div class="form-group">
+                    <label>Имя получателя *</label>
+                    <input type="text" id="order-name" required placeholder="Иван Иванов">
+                </div>
+                <div class="form-group">
+                    <label>Адрес доставки *</label>
+                    <input type="text" id="order-address" required placeholder="г. Москва, ул. Примерная, д.1">
+                </div>
+                <div class="form-group">
+                    <label>Телефон *</label>
+                    <input type="tel" id="order-phone" required placeholder="+7 900 123-45-67">
+                </div>
+                <div class="form-group">
+                    <label>Комментарий</label>
+                    <textarea id="order-notes" placeholder="Дополнительная информация"></textarea>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <i class="ph ph-floppy-disk"></i> Сохранить заказ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PANEL: EDIT ORDER -->
+    <div class="panel" id="edit-order-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-pencil" style="color:var(--accent);"></i> Редактирование заказа</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content" id="edit-order-content">
+            <form id="edit-order-form" onsubmit="saveEditedOrder(event)">
+                <input type="hidden" id="edit-order-index">
+                <div class="form-group">
+                    <label>Имя получателя *</label>
+                    <input type="text" id="edit-order-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Адрес доставки *</label>
+                    <input type="text" id="edit-order-address" required>
+                </div>
+                <div class="form-group">
+                    <label>Телефон *</label>
+                    <input type="tel" id="edit-order-phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Комментарий</label>
+                    <textarea id="edit-order-notes"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Товары</label>
+                    <div id="edit-order-items"></div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:16px;">
+                    <button type="submit" class="btn-primary" style="flex:1;">
+                        <i class="ph ph-floppy-disk"></i> Сохранить изменения
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeAllPanels()" style="flex:0 0 auto;">
+                        <i class="ph ph-x"></i> Отмена
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PANEL: ORDERS -->
+    <div class="panel" id="orders-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-clipboard-text" style="color:var(--accent);"></i> Мои заказы</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content" id="orders-content"></div>
+    </div>
+
+    <!-- PANEL: STATISTICS -->
+    <div class="panel" id="stats-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-chart-bar" style="color:var(--accent);"></i> Статистика продаж</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content">
+            <div class="stats-period" id="stats-period-tabs">
+                <span class="chip active" data-period="all" onclick="setStatsPeriod('all')">Всё время</span>
+                <span class="chip" data-period="today" onclick="setStatsPeriod('today')">Сегодня</span>
+                <span class="chip" data-period="week" onclick="setStatsPeriod('week')">Неделя</span>
+                <span class="chip" data-period="month" onclick="setStatsPeriod('month')">Месяц</span>
+            </div>
+            <div class="stats-grid" id="stats-grid"></div>
+            <div id="stats-extra"></div>
+        </div>
+    </div>
+
+    <!-- PANEL: SETTINGS -->
+    <div class="panel" id="settings-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-gear" style="color:var(--accent);"></i> Наценки по категориям</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content">
+            <div class="settings-list" id="settings-list"></div>
+            <button class="btn-secondary" style="width:100%; margin-top:16px;" onclick="resetMarkups()">
+                <i class="ph ph-arrow-counter-clockwise"></i> Сбросить наценки
+            </button>
+        </div>
+    </div>
+
+    <!-- PANEL: FAVORITES -->
+    <div class="panel" id="favorites-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-heart" style="color:var(--red);"></i> Избранное</div>
+            <div style="display:flex; gap:4px;">
+                <button class="btn-icon" onclick="addFavoritesToCart()" title="Добавить всё в корзину" style="color:var(--green);"><i class="ph ph-shopping-cart"></i></button>
+                <button class="btn-icon" onclick="clearFavorites()" title="Очистить избранное" style="color:var(--red);"><i class="ph ph-trash"></i></button>
+                <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+            </div>
+        </div>
+        <div class="panel-content" id="favorites-content"></div>
+    </div>
+
+    <!-- PANEL: EXPORT -->
+    <div class="panel" id="export-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-export" style="color:var(--accent);"></i> Экспорт данных</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content">
+            <div class="export-options">
+                <button class="export-btn" onclick="exportCartCSV()">
+                    <i class="ph ph-file-csv"></i>
+                    <span>Корзина → CSV</span>
+                </button>
+                <button class="export-btn" onclick="exportCartJSON()">
+                    <i class="ph ph-file-code"></i>
+                    <span>Корзина → JSON</span>
+                </button>
+                <button class="export-btn" onclick="exportOrdersCSV()">
+                    <i class="ph ph-file-csv"></i>
+                    <span>Заказы → CSV</span>
+                </button>
+                <button class="export-btn" onclick="shareViaWhatsApp()">
+                    <i class="ph ph-whatsapp-logo"></i>
+                    <span>WhatsApp</span>
+                </button>
+                <button class="export-btn" onclick="shareViaTelegram()">
+                    <i class="ph ph-telegram-logo"></i>
+                    <span>Telegram</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL: NAKLADNAYA (Invoice) -->
+    <div class="panel" id="nakladnaya-panel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="ph ph-receipt" style="color:var(--accent);"></i> Накладная</div>
+            <button class="btn-icon" onclick="closeAllPanels()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="panel-content" id="nakladnaya-content"></div>
+    </div>
+
+    <!-- FLOATING CART BUTTON -->
+    <button class="fab-cart hidden" id="fab-cart" onclick="togglePanel('cart-panel')">
+        <i class="ph ph-shopping-cart"></i>
+        <span class="fab-badge" id="fab-badge">0</span>
+    </button>
+
+    <!-- PRINT AREA -->
+    <div id="print-area"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
