@@ -20,7 +20,6 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
 
         body {
             font-family: var(--font);
@@ -39,8 +38,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.97);
         }
 
         .nav-logo {
@@ -420,19 +418,18 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 24px;
+            contain: layout style;
         }
 
         .product-card {
             cursor: pointer;
             opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.5s ease, transform 0.5s ease;
+            transition: opacity 0.4s ease;
             position: relative;
         }
 
         .product-card.visible {
             opacity: 1;
-            transform: translateY(0);
         }
 
         .product-thumb {
@@ -1104,7 +1101,7 @@
     <section class="bundles-section" id="bundles">
         <div class="section-header reveal" style="padding-left:0;padding-right:0;">
             <div class="section-label">01 — Связки</div>
-            <h2 class="section-title">Комплекты</h2>
+            <h2 class="section-title">Готовые <br> связки</h2>
         </div>
         <div class="bundles-grid" id="bundles-grid"></div>
     </section>
@@ -1633,48 +1630,96 @@
             return sorted;
         }
 
+        // ============================================================
+        // BATCHED RENDERING — 40 items at a time
+        // ============================================================
+        var BATCH_SIZE = 40;
+        var renderedCount = 0;
+        var filteredItems = [];
+        var scrollSentinel = null;
+        var isLoadingBatch = false;
+
+        function buildCardHTML(p) {
+            var inCart = cart[p.code];
+            var qty = inCart ? inCart.qty : 0;
+            var badge = qty > 0 ? '<span class="cart-count-badge">' + qty + '</span>' : '';
+            var action = qty > 0
+                ? 'removeFromCart(\'' + p.code + '\')'
+                : 'addToCart(\'' + p.code + '\')';
+            return '<div class="product-card">' +
+                '<div class="product-thumb">' +
+                '<img src="assets/' + p.code + '.webp" alt="' + p.name + '" loading="lazy" ' +
+                'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+                '<div class="product-fallback" style="display:none"><span>' + p.code + '</span></div>' +
+                '<button class="add-cart-btn" data-cart-btn="' + p.code + '" onclick="event.stopPropagation(); ' + action + '">' +
+                '<i class="ph ph-shopping-cart"></i>' + badge +
+                '</button>' +
+                '</div>' +
+                '<div class="product-price">' + p.price.toLocaleString('ru-RU') + ' &#8381;</div>' +
+                '<div class="product-name">' + p.name + '</div>' +
+                '</div>';
+        }
+
+        function renderBatch() {
+            if (renderedCount >= filteredItems.length) {
+                removeScrollSentinel();
+                return;
+            }
+            isLoadingBatch = true;
+            var grid = document.getElementById('product-grid');
+            var end = Math.min(renderedCount + BATCH_SIZE, filteredItems.length);
+            var frag = document.createDocumentFragment();
+            var temp = document.createElement('div');
+            for (var i = renderedCount; i < end; i++) {
+                temp.innerHTML = buildCardHTML(filteredItems[i]);
+                while (temp.firstChild) frag.appendChild(temp.firstChild);
+            }
+            grid.appendChild(frag);
+            renderedCount = end;
+            isLoadingBatch = false;
+            observeNewCards();
+        }
+
         function renderProducts() {
             var grid = document.getElementById('product-grid');
-            var filtered = sortItems(getFilteredItems());
+            filteredItems = sortItems(getFilteredItems());
+            renderedCount = 0;
 
-            // Update results count
-            document.getElementById('results-count').textContent = 'Найдено: ' + filtered.length + ' из ' + allItems.length + ' товаров';
-
-            // Update active filters display
+            document.getElementById('results-count').textContent = 'Найдено: ' + filteredItems.length + ' из ' + allItems.length + ' товаров';
             renderActiveFilters();
 
-            if (filtered.length === 0) {
+            if (filteredItems.length === 0) {
                 grid.innerHTML = '<div class="no-results"><h3>Ничего не найдено</h3><p>Попробуйте изменить параметры поиска</p></div>';
+                removeScrollSentinel();
                 return;
             }
 
-            var html = '';
-            filtered.forEach(function(p) {
-                var inCart = cart[p.code];
-                var qty = inCart ? inCart.qty : 0;
-                var badge = qty > 0 ? '<span class="cart-count-badge">' + qty + '</span>' : '';
-                var action = qty > 0
-                    ? 'removeFromCart(\'' + p.code + '\')'
-                    : 'addToCart(\'' + p.code + '\')';
-                html += '<div class="product-card">' +
-                    '<div class="product-thumb">' +
-                    '<img src="assets/' + p.code + '.webp" alt="' + p.name + '" loading="lazy" ' +
-                    'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
-                    '<div class="product-fallback" style="display:none"><span>' + p.code + '</span></div>' +
-                    '<button class="add-cart-btn" data-cart-btn="' + p.code + '" onclick="event.stopPropagation(); ' + action + '">' +
-                    '<i class="ph ph-shopping-cart"></i>' + badge +
-                    '</button>' +
-                    '</div>' +
-                    '<div class="product-price">' + p.price.toLocaleString('ru-RU') + ' &#8381;</div>' +
-                    '<div class="product-name">' + p.name + '</div>' +
-                    '</div>';
-            });
-
-            grid.innerHTML = html;
-
-            // Re-observe new cards for scroll reveal
-            observeCards();
+            grid.innerHTML = '';
+            renderBatch();
+            setupScrollSentinel();
         }
+
+        function setupScrollSentinel() {
+            removeScrollSentinel();
+            scrollSentinel = document.createElement('div');
+            scrollSentinel.style.height = '1px';
+            document.getElementById('catalog').appendChild(scrollSentinel);
+            scrollObserver.observe(scrollSentinel);
+        }
+
+        function removeScrollSentinel() {
+            if (scrollSentinel) {
+                scrollObserver.unobserve(scrollSentinel);
+                if (scrollSentinel.parentNode) scrollSentinel.parentNode.removeChild(scrollSentinel);
+                scrollSentinel = null;
+            }
+        }
+
+        var scrollObserver = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting && !isLoadingBatch) {
+                renderBatch();
+            }
+        }, { rootMargin: '400px' });
 
         // ============================================================
         // BUNDLES — product codes, resolved from allItems at render time
@@ -1773,27 +1818,28 @@
         }
 
         // ============================================================
-        // SCROLL REVEAL
+        // SCROLL REVEAL — lightweight
         // ============================================================
-        var observer;
-
-        function observeCards() {
-            var targets = document.querySelectorAll('.product-card:not(.visible), .reveal:not(.visible), .bundle-card:not(.visible), .banner-content:not(.visible)');
-            if (!targets.length) return;
-
-            if (!observer) {
-                observer = new IntersectionObserver(function(entries) {
-                    for (var i = 0; i < entries.length; i++) {
-                        if (entries[i].isIntersecting) {
-                            entries[i].target.classList.add('visible');
-                            observer.unobserve(entries[i].target);
-                        }
-                    }
-                }, { threshold: 0.05 });
+        var revealObserver = new IntersectionObserver(function(entries) {
+            for (var i = 0; i < entries.length; i++) {
+                if (entries[i].isIntersecting) {
+                    entries[i].target.classList.add('visible');
+                    revealObserver.unobserve(entries[i].target);
+                }
             }
+        }, { threshold: 0.05 });
 
+        function observeNewCards() {
+            var targets = document.querySelectorAll('.product-card:not(.visible)');
             for (var i = 0; i < targets.length; i++) {
-                observer.observe(targets[i]);
+                revealObserver.observe(targets[i]);
+            }
+        }
+
+        function observeStaticElements() {
+            var els = document.querySelectorAll('.reveal:not(.visible), .bundle-card:not(.visible), .banner-content:not(.visible)');
+            for (var i = 0; i < els.length; i++) {
+                revealObserver.observe(els[i]);
             }
         }
 
@@ -1801,7 +1847,7 @@
         // INIT
         // ============================================================
         loadData().then(function() {
-            observeCards();
+            observeStaticElements();
             renderCartUI();
         });
     })();
